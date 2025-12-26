@@ -7,10 +7,13 @@ const int INITIAL_WINDOW_HEIGHT = 550;
 const int DELIVERY_BIKE_RENDER_SIZE = 32;
 const int DELIVERY_BIKE_SCALED_SIZE = 128;
 const Color BACKGROUND_COLOR = DARKGRAY;
+bool showOrders=false;
+int count=0; //Number of order (Αριθμός παραγγελίας)
 
 int main(void) {
   
   InitWindow(INITIAL_WINDOW_WIDTH, INITIAL_WINDOW_HEIGHT, "RaylibProjectAuth");
+  Texture2D Texture2DBackground = LoadTexture("map.jpg"); 
   SetTargetFPS(60);
 
   RenderTexture2D deliveryBikeRender = LoadRenderTexture(DELIVERY_BIKE_RENDER_SIZE, DELIVERY_BIKE_RENDER_SIZE);
@@ -64,17 +67,27 @@ int main(void) {
       } else if (cam.zoom <= 1.6 && GetMouseWheelMove() > 0) {
         cam.zoom += 0.2;
       }
-
+      
       BeginMode2D(cam);
+        
+        DrawTexture (Texture2DBackground, 0, 0, WHITE);
         Draw8BitRoad();
         DrawTexturePro(deliveryBikeRender.texture, bikeSource, deliveryBike, (Vector2) { DELIVERY_BIKE_SCALED_SIZE / 2, DELIVERY_BIKE_SCALED_SIZE / 2 }, 180, WHITE);
     
       EndMode2D();
-        
-        
-      EndDrawing();
-    }
       
+      if (IsKeyPressed(KEY_K)) {
+            showOrders = !showOrders;
+      }
+      
+      if (showOrders)   {
+          DrawRectangle (10, 10, 140, 170, WHITE);
+          DrawText("Fuck PAOK", 15, 15 + count*25, 20, BLACK);
+      }
+    EndDrawing();
+  }
+  
+  UnloadTexture (Texture2DBackground);
   UnloadRenderTexture(deliveryBikeRender);
   CloseWindow();
 
