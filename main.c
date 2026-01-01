@@ -24,7 +24,7 @@ int main(void) {
   vehicleGenerator(MAX_VEHICLES, vehicles, 80, 80); // posx , posy != 0 else bug. Needs to be offsected
   
   InitWindow(INITIAL_WINDOW_WIDTH, INITIAL_WINDOW_HEIGHT, "RaylibProjectAuth");
-  Texture2D background = LoadTexture("map.jpg"); 
+  Texture2D background = LoadTexture("assets/map.jpg"); 
   SetTextureFilter(background, TEXTURE_FILTER_POINT);
   
   int mapHeight = background.height;
