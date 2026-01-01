@@ -100,8 +100,7 @@ int main(void) {
             mapVehicleToDrawFunction(vehicles[i].type, vehicles[i].posx, vehicles[i].posy, vehicles[i].vehicleColor);
         }
         
-        Draw8BitRoad();
-        
+                
         Rectangle destRect = { deliveryBike.x, deliveryBike.y, DELIVERY_BIKE_SCALED_SIZE, DELIVERY_BIKE_SCALED_SIZE };
         Vector2 origin = { DELIVERY_BIKE_SCALED_SIZE / 2, DELIVERY_BIKE_SCALED_SIZE / 2 };
         DrawTexturePro(deliveryBikeRender.texture, bikeSource, deliveryBike, (Vector2) { DELIVERY_BIKE_SCALED_SIZE / 2, DELIVERY_BIKE_SCALED_SIZE / 2 }, 180, WHITE);
