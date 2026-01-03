@@ -4,10 +4,11 @@
 #include"helpers.c"
 #include"drawTextures.c"
 
-const int INITIAL_WINDOW_WIDTH = 1000; 
-const int INITIAL_WINDOW_HEIGHT = 550;
+const int INITIAL_WINDOW_WIDTH = 1300; 
+const int INITIAL_WINDOW_HEIGHT = 800;
 const int DELIVERY_BIKE_RENDER_SIZE = 32;
-const int DELIVERY_BIKE_SCALED_SIZE = 128;
+const int DELIVERY_BIKE_SCALED_SIZE = 20;
+const int SPEED_CONSTANT = 2;
 const Color BACKGROUND_COLOR = DARKGRAY;
 
 const int MINIMAP_WIDTH = 150;      
@@ -15,8 +16,9 @@ const int MINIMAP_HEIGHT = 150;
 const float MINIMAP_ZOOM = 0.3f;    
 const int MINIMAP_BORDER = 2;
 
-bool showOrders=false;
-int count=0; //Number of order
+bool showOrders = false;
+int count = 0; //Number of order
+
 int main(void) {
   
   SetRandomSeed(time(NULL)); 
@@ -25,6 +27,7 @@ int main(void) {
   
   InitWindow(INITIAL_WINDOW_WIDTH, INITIAL_WINDOW_HEIGHT, "RaylibProjectAuth");
   Texture2D background = LoadTexture("assets/map.jpg"); 
+  Image backgroundWithBorders = LoadImage("assets/mapWithBorders.jpg");
   SetTextureFilter(background, TEXTURE_FILTER_POINT);
   
   int mapHeight = background.height;
@@ -45,36 +48,69 @@ int main(void) {
   // initialize main camera
   Camera2D cam = {0};
   cam.offset = (Vector2){GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f};
-  cam.zoom = 1;
+  cam.zoom = 3;
   cam.rotation = 0;
   
   // initialize minimap camera
   Camera2D minimapCam = {0};
   minimapCam.zoom = MINIMAP_ZOOM;
 
+  int rotation = 180;
+
   while (!WindowShouldClose()) {
-    
     updateTraffic(vehicles, MAX_VEHICLES, cam, mapHeight, mapWidth);
     BeginDrawing();
 
       ClearBackground(DARKGRAY);
-    
+
+      float horizontalOffset, verticalOffset;
+
+      if (rotation == 90 || rotation == 270) {
+          // Vehicle is horizontal -> swap offsets
+          horizontalOffset = deliveryBike.height / 2.0f; 
+          verticalOffset = deliveryBike.width / 3.5f;
+      } else {
+          // Vehicle is vertical -> standard offsets
+          horizontalOffset = deliveryBike.width / 3.5f;
+          verticalOffset = deliveryBike.height / 2.0f;
+      }
+
+      // points of bike we need to track for collisions
+      // goes clockwise: top, right, bottom, left
+      const Vector2 collisionPoints[4] = {
+          {deliveryBike.x, deliveryBike.y - verticalOffset - 1},
+          {deliveryBike.x + horizontalOffset + 1, deliveryBike.y},
+          {deliveryBike.x, deliveryBike.y + verticalOffset + 1},
+          {deliveryBike.x - horizontalOffset - 1, deliveryBike.y}
+      };
+      
       /*** MOVEMENT ***/ 
-      // move forward
       if (IsKeyDown(KEY_W)) {
-        deliveryBike.y -= 4;
+        if (!willTouchBorder(backgroundWithBorders, collisionPoints[0])) {
+          rotation = 180;
+          deliveryBike.y -= SPEED_CONSTANT;
+        }
       }
       // move backward (S)
       if (IsKeyDown(KEY_S)) {
-        deliveryBike.y += 4;
+        if (!willTouchBorder(backgroundWithBorders, collisionPoints[2])) {
+          rotation = 0;
+          deliveryBike.y += SPEED_CONSTANT;
+        }
       }
       // move left (A)
       if(IsKeyDown(KEY_A)) {
-        deliveryBike.x -= 4;
+        if (!willTouchBorder(backgroundWithBorders, collisionPoints[3])) {
+          rotation = 90;
+          deliveryBike.x -= SPEED_CONSTANT;
+        }
       }
       // move right (D)
       if (IsKeyDown(KEY_D)) {
-        deliveryBike.x += 4;
+        if (!willTouchBorder(backgroundWithBorders, collisionPoints[1])) {
+          rotation = 270;
+          deliveryBike.x += SPEED_CONSTANT;
+        }
       }
 
       /*** CAMERA ***/
@@ -82,14 +118,14 @@ int main(void) {
       cam.target.x = deliveryBike.x;
       cam.target.y = deliveryBike.y;
       
-      // Only if 0.8 <= cam.zoom <= 1.4 we want to change cam.zoom. Otherwise,
-      // bike will become very small/big.
-      if (cam.zoom >= 0.6 && GetMouseWheelMove() < 0) {
+      // Create bounds for cam.zoom, so that the
+      // bike won't become very small/big.
+      if (cam.zoom >= 2 && GetMouseWheelMove() < 0) {
         cam.zoom -= 0.2;
-      } else if (cam.zoom <= 1.6 && GetMouseWheelMove() > 0) {
+      } else if (cam.zoom <= 3.6 && GetMouseWheelMove() > 0) {
         cam.zoom += 0.2;
       }
-      
+
       minimapCam.target.x = deliveryBike.x;
       minimapCam.target.y = deliveryBike.y;
       
@@ -103,7 +139,7 @@ int main(void) {
                 
         Rectangle destRect = { deliveryBike.x, deliveryBike.y, DELIVERY_BIKE_SCALED_SIZE, DELIVERY_BIKE_SCALED_SIZE };
         Vector2 origin = { DELIVERY_BIKE_SCALED_SIZE / 2, DELIVERY_BIKE_SCALED_SIZE / 2 };
-        DrawTexturePro(deliveryBikeRender.texture, bikeSource, deliveryBike, (Vector2) { DELIVERY_BIKE_SCALED_SIZE / 2, DELIVERY_BIKE_SCALED_SIZE / 2 }, 180, WHITE);
+        DrawTexturePro(deliveryBikeRender.texture, bikeSource, deliveryBike, (Vector2) { DELIVERY_BIKE_SCALED_SIZE / 2, DELIVERY_BIKE_SCALED_SIZE / 2 }, rotation, WHITE);
     
       EndMode2D();
       
@@ -128,26 +164,34 @@ int main(void) {
                 }
             }
 
-             DrawTexturePro(deliveryBikeRender.texture, bikeSource, destRect, origin, 180, WHITE);
+            DrawTexturePro(deliveryBikeRender.texture, bikeSource, destRect, origin, rotation, WHITE);
+            
 
         EndMode2D();
         
-      EndScissorMode(); 
+        EndScissorMode(); 
       
       DrawRectangleLines(mmX, mmY, MINIMAP_WIDTH, MINIMAP_HEIGHT, BLACK);
-      
+            
+      if (IsKeyPressed(KEY_F)) {
+        ToggleFullscreen();
+      }
+
       if (IsKeyPressed(KEY_K)) {
-            showOrders = !showOrders;
+        showOrders = !showOrders;
       }
       
-      if (showOrders)   {
-          DrawRectangle (10, 10, 140, 170, WHITE);
-          DrawText("Orders", 15, 15 + count*25, 20, BLACK);
+      if (showOrders) {
+        DrawRectangle (10, 10, 140, 170, WHITE);
+        DrawText("Orders", 15, 15 + count*25, 20, BLACK);
       }
+
+
     EndDrawing();
   }
   
-  UnloadTexture (background);
+  UnloadTexture(background);
+  UnloadImage(backgroundWithBorders);
   UnloadRenderTexture(deliveryBikeRender);
   CloseWindow();
 

@@ -89,3 +89,9 @@ void updateTraffic (Vehicle *vehicle, int maxVehicles, Camera2D cam, int mapHeig
         }
     }
 }
+
+bool willTouchBorder(Image image, Vector2 point) {
+    Color c = GetImageColor(image, point.x, point.y);
+    if (c.r > 100 && c.r > c.g * 1.5f && c.r > c.b * 1.5f) return true;
+    return false;
+}
