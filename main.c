@@ -13,8 +13,8 @@
 #include <time.h>
 #include"raylib.h"
 #include "raymath.h"
-#include"helpers.c"
-#include"drawTextures.c"
+#include"helpers.h"
+#include"drawTextures.h"
 
 const int INITIAL_WINDOW_WIDTH = 1300; 
 const int INITIAL_WINDOW_HEIGHT = 800;
