@@ -87,31 +87,44 @@ The following assets were used in this project and are not owned by the authors:
 Ο πηγαίος κώδικας δομείται γύρω από το αρχείο `main.c`, το οποίο ενσωματώνει τις βοηθητικές βιβλιοθήκες (`helpers.c`, `drawTextures.c`).
 Για τη δημιουργία του εκτελέσιμου αρχείου, ανοίξτε τερματικό στον φάκελο του έργου και εκτελέστε την εξής εντολή (για GCC):
 
-'gcc main.c helpers.c drawTextures.c -o DeliveryRush.exe -O2 -Wall -lraylib -lopengl32 -lgdi32 -lwinmm'
+`gcc main.c helpers.c drawTextures.c -o DeliveryRush.exe -O2 -Wall -I ./libraries -L ./libraries -lraylib -lopengl32 -lgdi32 -lwinmm`
 
+**Ενδεικτική Δομή Φακέλων:**
+
+    /DeliveryRush
+        ├── main.c
+        ├── helpers.c
+        ├── helpers.h
+        ├── drawTextures.c
+        ├── drawTextures.h
+        ├── LICENSE.txt
+        ├── assets/
+             ├── map.jpg
+             ├── mapWithBorders.png
+             ├── background_music.mp3
+             └── horn.mp3
+        └── libraries/
+             ├── raylib.h
+             ├── raymath.h
+             └── libraylib.a
 
 ---
 
 ## 5. Οδηγίες Εγκατάστασης
 
 Τοποθετήστε το εκτελέσιμο αρχείο (`DeliveryRush.exe`) στον κεντρικό φάκελο της εφαρμογής.
-Βεβαιωθείτε ότι υπάρχει ο υποφάκελος `assets/` στον ίδιο χώρο, ο οποίος πρέπει να περιέχει:
+Βεβαιωθείτε ότι υπάρχει ο υποφάκελος `assets/` και ο υποφάκελος `libraries/` βρίσκονται στον ίδιο χώρο, οι οποίοι πρέπει να περιέχουν αντίστοιχα:
 
 * `map.jpg`: Εικόνα φόντου (χάρτης).
 * `mapWithBorders.png`: Εικόνα χάρτη για έλεγχο ορίων (collisions).
 * `background_music.mp3`: Μουσική παιχνιδιού.
 * `horn.mp3`: Ηχητικό εφέ κόρνας.
 
-**Δομή Φακέλων:**
+και
 
-    /DeliveryRush
-        ├── DeliveryRush.exe
-        ├── LICENSE.txt
-        └── assets/
-             ├── map.jpg
-             ├── mapWithBorders.png
-             ├── background_music.mp3
-             └── horn.mp3
+* `raylib.h`
+* `raymath.h`
+* `libraylib.a`
 
 ---
 
