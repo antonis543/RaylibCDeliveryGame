@@ -2,7 +2,7 @@
  * Πανεπιστήμιο: Αριστοτέλειο Πανεπιστήμιο Θεσσαλονίκης
  * Τμήμα: Τμήμα Ηλεκτρολόγων Μηχανικών και Μηχανικών Υπολογιστών
  * Μάθημα: Δομημένος Προγραμματισμός (004)
- * Τίτλος Εργασίας: Raylib Food Delivery Game
+ * Τίτλος Εργασίας: Delivery Rush
  * Συγγραφείς:
  * - Αντώνιος Καραφώτης (ΑΕΜ: 11891)
  * - Νικόλαος Αμοιρίδης (ΑΕΜ: 11836)
@@ -33,9 +33,9 @@ extern float difficultyFactor;
 
 
 // type defs
-typedef enum { STATE_MENU, STATE_GAMEPLAY, STATE_OPTIONS, STATE_GAME_OVER } GameState;
-
+typedef enum { STATE_MENU, STATE_GAMEPLAY, STATE_OPTIONS, STATE_GAME_OVER, STATE_CONTROLS, STATE_ABOUT_CREATORS, STATE_GAMEOVER } GameState;
 typedef enum { PENDING, SUCCESS, FAILURE } TypeOfMessage;
+typedef enum { CAR, TRUCK, POLICE } TYPE_OF_VEHICLE;
 
 typedef struct {
     float timer;
@@ -59,8 +59,6 @@ typedef struct {
     float timeRemaining;
     float maxTimeAllowed;
 } Order;
-
-typedef enum { CAR, TRUCK, POLICE } TYPE_OF_VEHICLE;
 
 typedef struct {
     TYPE_OF_VEHICLE type;
@@ -86,6 +84,8 @@ void vehicleGenerator(int numOfVehicles, Vehicle vehicles[], int mapHeight, int 
 bool checkCollisionWithVehicles(Rectangle playerRect, Vehicle *vehicles, int maxVehicles, bool useMargin);
 void updateTraffic(Vehicle *vehicles, int maxVehicles, Image mapWithBorders, Vector2 playerPos);
 void displayOrderMessage(OrderStatusMessage *message, float lastReward);
+void DrawControlKey(const char* key, const char* action, int x, int y);
 Vector2 GetRandomValidPosition(Image map, Vehicle *vehicles, int maxVehicles, int mapWidth, int mapHeight);
+
 
 #endif

@@ -2,7 +2,7 @@
  * Πανεπιστήμιο: Αριστοτέλειο Πανεπιστήμιο Θεσσαλονίκης
  * Τμήμα: Τμήμα Ηλεκτρολόγων Μηχανικών και Μηχανικών Υπολογιστών
  * Μάθημα: Δομημένος Προγραμματισμός (004)
- * Τίτλος Εργασίας: Raylib Food Delivery Game
+ * Τίτλος Εργασίας: Delivery Rush
  * Συγγραφείς:
  * - Αντώνιος Καραφώτης (ΑΕΜ: 11891)
  * - Νικόλαος Αμοιρίδης (ΑΕΜ: 11836)
@@ -210,7 +210,7 @@ void displayOrderMessage(OrderStatusMessage *message, float lastReward) {
         // Extra "glow" border for the success bar
         DrawRectangleLinesEx((Rectangle){0, (float)screenH / 2 - 60, (float)screenW, 120}, 3, GOLD);
 
-        // Text
+        // Draw the green successful text
         DrawText(header, screenW / 2 - textWidthMain / 2, screenH / 2 - 40, fontSizeMain, LIME);
         DrawText(subtext, screenW / 2 - textWidthSub / 2, screenH / 2 + 10, fontSizeSub, GOLD);
         message->timer -= GetFrameTime();
@@ -245,6 +245,26 @@ bool DrawButton(const char *text, Rectangle rec, int fontSize, Color color, Colo
     DrawText(text, rec.x + (rec.width - textWidth) / 2, rec.y + (rec.height - fontSize) / 2, fontSize, textColor);
 
     return pressed;
+}
+
+void DrawControlKey(const char* key, const char* action, int x, int y) {
+    int keySize = 50;
+    
+    // Draw Shadow (for 3D effect)
+    DrawRectangleRounded((Rectangle){x + 2, y + 4, keySize, keySize}, 0.2f, 10, Fade(BLACK, 0.5f));
+    
+    // Draw Key Background
+    DrawRectangleRounded((Rectangle){x, y, keySize, keySize}, 0.2f, 10, RAYWHITE);
+    DrawRectangleRoundedLines((Rectangle){x, y, keySize, keySize}, 0.2f, 10, DARKGRAY);
+    
+    // Draw Key Letter (Centered)
+    int textWidth = MeasureText(key, 20);
+    DrawText(key, x + (keySize/2 - textWidth/2), y + (keySize/2 - 10), 20, DARKGRAY);
+    
+    // Draw Action Description
+    if (action != NULL) {
+        DrawText(action, x + keySize + 20, y + 15, 20, WHITE);
+    }
 }
 
 TYPE_OF_VEHICLE mapRandomToVehicleType(int random) {    // Select random vehicle type

@@ -2,7 +2,7 @@
  * Πανεπιστήμιο: Αριστοτέλειο Πανεπιστήμιο Θεσσαλονίκης
  * Τμήμα: Τμήμα Ηλεκτρολόγων Μηχανικών και Μηχανικών Υπολογιστών
  * Μάθημα: Δομημένος Προγραμματισμός (004)
- * Τίτλος Εργασίας: Raylib Food Delivery Game
+ * Τίτλος Εργασίας: Delivery Rush
  * Συγγραφείς:
  * - Αντώνιος Καραφώτης (ΑΕΜ: 11891)
  * - Νικόλαος Αμοιρίδης (ΑΕΜ: 11836)
@@ -39,20 +39,19 @@ const int FONT_SIZE = 20;
 bool showOrders = false;
 int count = 0; // Number of orders completed
 float totalMoney = 0.0f;
-float difficultyFactor = 0.8f; 
+float difficultyFactor = 0.5f; 
 
 int main(void) {
   
   SetRandomSeed(time(NULL)); 
   
-  InitWindow(INITIAL_WINDOW_WIDTH, INITIAL_WINDOW_HEIGHT, "Raylib Delivery Rush");
+  InitWindow(INITIAL_WINDOW_WIDTH, INITIAL_WINDOW_HEIGHT, "Delivery Rush");
   
   // --- LOAD ASSETS ---
-  // Note: Using the file extensions from main.c 1 as they seemed more specific (png for borders)
   Texture2D background = LoadTexture("assets/map.jpg"); 
   Image backgroundWithBorders = LoadImage("assets/mapWithBorders.png");
   
-  // Analyze map for houses/restaurants (From main.c 1)
+  // Analyze map for houses/restaurants
   InitMapLocations(backgroundWithBorders);
   Order currentOrder = CreateNewOrder();
   
@@ -109,6 +108,10 @@ int main(void) {
   // --- GAMEPLAY VARIABLES ---
   GameState currentState = STATE_MENU; // Start at Menu
   int rotation = 0;
+
+  // timer to end run
+  const float GAME_DURATION = 240.0f; // 4 Minutes in seconds
+  float globalTimer = GAME_DURATION;
   
   OrderStatusMessage message;
   message.messageType = PENDING;
@@ -141,6 +144,12 @@ int main(void) {
 
     if (currentState == STATE_GAMEPLAY && !exitRequest) {
         
+        globalTimer -= GetFrameTime();
+        if (globalTimer <= 0) {
+            globalTimer = 0;
+            currentState = STATE_GAMEOVER;
+        }
+
         // 1. Traffic & Orders
         updateTraffic(vehicles, MAX_VEHICLES, backgroundWithBorders, (Vector2){deliveryBike.x, deliveryBike.y});
         
@@ -307,9 +316,24 @@ int main(void) {
             DrawTexturePro(deliveryBikeRender.texture, bikeSource, deliveryBike, origin, rotation, WHITE);
         
           EndMode2D();
+
+          // --- GLOBAL TIMER HUD ---
+          int timerSec = (int)globalTimer % 60;
+          int timerMin = (int)globalTimer / 60;
+          const char* globalText = TextFormat("%02d:%02d", timerMin, timerSec);
+          int gTimerW = 140;
+          int gTimerX = GetScreenWidth()/2 - gTimerW/2;
+
+          // Draw Box
+          DrawRectangle(gTimerX, 20, gTimerW, 50, Fade(SKYBLUE, 0.9f));
+          DrawRectangleLines(gTimerX, 20, gTimerW, 50, DARKBLUE);
+
+          // Draw Text (Red if under 30 seconds, else Black)
+          Color gColor = (globalTimer < 30.0f) ? RED : BLACK;
+          DrawText(globalText, gTimerX + (gTimerW - MeasureText(globalText, 30))/2, 30, 30, gColor);
           
           // --- MINIMAP ---
-          int mmX = GetScreenWidth() - MINIMAP_WIDTH - 20;
+          int mmX = GetScreenWidth() - MINIMAP_WIDTH - 30;
           int mmY = 20;
           
           minimapCam.offset = (Vector2){ mmX + MINIMAP_WIDTH/2, mmY + MINIMAP_HEIGHT/2 };
@@ -322,7 +346,11 @@ int main(void) {
                 DrawTexture(background, 0, 0, LIGHTGRAY);
                 for (int i=0; i<MAX_VEHICLES; i++) RenderVehicle(vehicles[i], carTex, truckTex, policeTex);
                 if (currentOrder.isActive && !currentOrder.foodPickedUp) {
+                    // Draw Restaurant (Yellow square)
                     DrawRectangle((int)currentOrder.pickupLocation.x - 10, (int)currentOrder.pickupLocation.y - 10, 20, 20, YELLOW);
+                } else {
+                    // Draw Delivery House (Yellow square)
+                    DrawRectangle((int)currentOrder.dropoffLocation.x - 10, (int)currentOrder.dropoffLocation.y - 10, 20, 20, YELLOW);
                 }
                 DrawTexturePro(deliveryBikeRender.texture, bikeSource, destRect, origin, rotation, WHITE);
             EndMode2D();
@@ -339,7 +367,7 @@ int main(void) {
             float distRestToHouse = Vector2Distance(currentOrder.pickupLocation, currentOrder.dropoffLocation);
             float reward = 5.0f + (distRestToHouse * 0.015f); // Approximation for display
             DrawText(TextFormat("Distance: %.1f m", distToHouse), 20, 70, 20, BLACK);
-            DrawText(TextFormat("Reward: $%.2f", reward), 20, 90, 20, DARKGREEN);
+            DrawText(TextFormat("Max reward: $%.2f", reward), 20, 90, 20, DARKGREEN);
           }
           else if (showOrders)  {
             DrawRectangle (10, 10, 220, 100, WHITE);
@@ -378,6 +406,74 @@ int main(void) {
           }
       } 
       
+      // --- STATE: GAME OVER ---
+      else if (currentState == STATE_GAMEOVER) {
+        // 1. Background (Dimmed map)
+        DrawTexturePro(background, (Rectangle){0,0,background.width,background.height}, (Rectangle){0,0,GetScreenWidth(),GetScreenHeight()}, (Vector2){0,0}, 0, DARKGRAY);
+        DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.85f));
+
+        int centerX = GetScreenWidth() / 2;
+        int centerY = GetScreenHeight() / 2;
+
+        // 2. Main Title
+        const char* title = "\"RUSH\" OVER!";
+        DrawText(title, centerX - MeasureText(title, 60)/2, centerY - 150, 60, RED);
+
+        // 3. Stats Panel
+        int panelW = 500;
+        int panelH = 200;
+        int panelX = centerX - panelW/2;
+        int panelY = centerY - 60;
+
+        DrawRectangleRounded((Rectangle){panelX, panelY, panelW, panelH}, 0.1f, 10, Fade(DARKGRAY, 0.5f));
+        DrawRectangleRoundedLines((Rectangle){panelX, panelY, panelW, panelH}, 0.1f, 10, WHITE);
+
+        // Stats Text
+        DrawText("SESSION RESULTS", centerX - MeasureText("SESSION RESULTS", 30)/2, panelY + 20, 30, GOLD);
+
+        const char* txtOrders = TextFormat("Total Deliveries: %d", count);
+        const char* txtMoney = TextFormat("Total Earnings: $%.2f", totalMoney);
+
+        DrawText(txtOrders, centerX - MeasureText(txtOrders, 25)/2, panelY + 80, 25, WHITE);
+        DrawText(txtMoney, centerX - MeasureText(txtMoney, 25)/2, panelY + 120, 25, GREEN);
+
+        // 4. Buttons (Play Again / Menu)
+        int btnY = panelY + panelH + 40;
+        
+        // PLAY AGAIN BUTTON
+        if (DrawButton("PLAY AGAIN", (Rectangle){centerX - BUTTON_WIDTH - 20, btnY, BUTTON_WIDTH, BUTTON_HEIGHT}, FONT_SIZE, ORANGE, DARKGREEN, BLACK)) {
+            // --- RESET VARIABLES ---
+            count = 0;
+            totalMoney = 0.0f;
+            globalTimer = GAME_DURATION;
+            currentOrder = CreateNewOrder();
+            
+            deliveryBike.x = mapWidth / 2.0f;
+            deliveryBike.y = mapHeight / 2.0f;
+            deliveryBikeRender = LoadRenderTexture(DELIVERY_BIKE_RENDER_SIZE, DELIVERY_BIKE_RENDER_SIZE);
+            DrawDeliveryBike(deliveryBikeRender);
+            rotation = 0;
+            
+            currentState = STATE_GAMEPLAY;
+        }
+
+        // MAIN MENU BUTTON
+        if (DrawButton("MAIN MENU", (Rectangle){centerX + 20, btnY, BUTTON_WIDTH, BUTTON_HEIGHT}, FONT_SIZE, ORANGE, RED, BLACK)) {
+            // --- RESET VARIABLES ---
+            count = 0;
+            totalMoney = 0.0f;
+            globalTimer = GAME_DURATION;
+            currentOrder = CreateNewOrder();
+            
+            // Reset Player Position
+            deliveryBike.x = mapWidth / 2.0f;
+            deliveryBike.y = mapHeight / 2.0f;
+            rotation = 0;
+
+            currentState = STATE_MENU;
+        }
+      }
+      
       // --- STATE: MENU ---
       else if (currentState == STATE_MENU) {
           // Draw dimmed game in background
@@ -388,15 +484,21 @@ int main(void) {
           DrawText(title, GetScreenWidth()/2 - titleWidth/2, 100, 60, RAYWHITE);
 
           float centerX = GetScreenWidth() / 2.0f - BUTTON_WIDTH / 2.0f;
-          float startY = GetScreenHeight() / 2.0f - 50;
+          float startY = GetScreenHeight() / 2.0f - 100;
 
           if (DrawButton("START GAME", (Rectangle){centerX, startY, BUTTON_WIDTH, BUTTON_HEIGHT}, FONT_SIZE, LIGHTGRAY, WHITE, BLACK)) {
               currentState = STATE_GAMEPLAY;
           }
-          if (DrawButton("OPTIONS", (Rectangle){centerX, startY + 70, BUTTON_WIDTH, BUTTON_HEIGHT}, FONT_SIZE, LIGHTGRAY, WHITE, BLACK)) {
+          if (DrawButton("CONTROLS", (Rectangle){centerX, startY + 70, BUTTON_WIDTH, BUTTON_HEIGHT}, FONT_SIZE, LIGHTGRAY, WHITE, BLACK)) {
+            currentState = STATE_CONTROLS;
+          }
+          if (DrawButton("OPTIONS", (Rectangle){centerX, startY + 140, BUTTON_WIDTH, BUTTON_HEIGHT}, FONT_SIZE, LIGHTGRAY, WHITE, BLACK)) {
               currentState = STATE_OPTIONS;
           }
-          if (DrawButton("EXIT", (Rectangle){centerX, startY + 140, BUTTON_WIDTH, BUTTON_HEIGHT}, FONT_SIZE, LIGHTGRAY, RED, BLACK)) {
+          if (DrawButton("ABOUT CREATORS", (Rectangle){centerX, startY + 210, BUTTON_WIDTH, BUTTON_HEIGHT}, FONT_SIZE, LIGHTGRAY, WHITE, BLACK)) {
+              currentState = STATE_ABOUT_CREATORS;
+          }
+          if (DrawButton("EXIT", (Rectangle){centerX, startY + 280, BUTTON_WIDTH, BUTTON_HEIGHT}, FONT_SIZE, LIGHTGRAY, RED, BLACK)) {
               break; 
           }
       }
@@ -463,6 +565,144 @@ int main(void) {
       
   }
       
+      // --- STATE: CONTROLS ---
+      else if (currentState == STATE_CONTROLS) {
+            // 1. Draw Background (Dimmed)
+            DrawTexturePro(background, (Rectangle){0,0,background.width,background.height}, (Rectangle){0,0,GetScreenWidth(),GetScreenHeight()}, (Vector2){0,0}, 0, DARKGRAY);
+            DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.4f)); // Extra dim
+
+            // 2. Title
+            const char* title = "HOW TO PLAY";
+            DrawText(title, GetScreenWidth()/2 - MeasureText(title, 50)/2, 60, 50, GOLD);
+
+            // 3. Layout Coordinates
+            int leftColX = GetScreenWidth() / 2 - 250;
+            int rightColX = GetScreenWidth() / 2 + 50;
+            int startY = 160;
+
+            // --- MOVEMENT SECTION (Left Side) ---
+            DrawText("MOVEMENT", leftColX, startY, 25, LIGHTGRAY);
+            DrawLine(leftColX, startY + 30, leftColX + 200, startY + 30, LIGHTGRAY);
+            
+            // Draw WASD Cluster
+            int wasdY = startY + 50;
+            DrawControlKey("W", "Move forward", leftColX + 60, wasdY);
+            DrawControlKey("A", "Turn Left", leftColX + 60, wasdY + 60);
+            DrawControlKey("S", "Reverse", leftColX + 60, wasdY + 120);
+            DrawControlKey("D", "Turn Right", leftColX + 60, wasdY + 180);
+
+            // --- ACTIONS SECTION (Right Side) ---
+            DrawText("ACTIONS", rightColX, startY, 25, LIGHTGRAY);
+            DrawLine(rightColX, startY + 30, rightColX + 200, startY + 30, LIGHTGRAY);
+
+            int actionY = startY + 50;
+            DrawControlKey("K", "Show Orders", rightColX, actionY);
+            DrawControlKey("F", "Toggle Fullscreen", rightColX, actionY + 70);
+            DrawControlKey("ESC", "Exit Game", rightColX, actionY + 140); // Assuming you add ESC logic later
+
+            // --- GAMEPLAY TIPS ---
+            int tipY = 500;
+            const char* tip1 = "DELIVERY TIP: Follow the White Arrow to find the restaurant and then the customer!";
+            DrawRectangle(0, tipY, GetScreenWidth(), 40, Fade(DARKGREEN, 0.6f));
+            DrawText(tip1, GetScreenWidth()/2 - MeasureText(tip1, 20)/2, tipY + 10, 20, WHITE);
+
+            tipY = 550;
+            const char* tip2 = "BE CAREFUL: Deliver the food on time or else you are going to loose money! You have 4 minutes in total to make deliveries.";
+            DrawRectangle(0, tipY, GetScreenWidth(), 40, Fade(RED, 0.6f));
+            DrawText(tip2, GetScreenWidth()/2 - MeasureText(tip2, 20)/2, tipY + 10, 20, WHITE);
+
+            // 4. Back Button
+            float btnX = GetScreenWidth() / 2.0f - BUTTON_WIDTH / 2.0f;
+            float btnY = GetScreenHeight() - 200;
+            if (DrawButton("BACK", (Rectangle){btnX, btnY, BUTTON_WIDTH, BUTTON_HEIGHT}, FONT_SIZE, ORANGE, WHITE, BLACK)) {
+                currentState = STATE_MENU;
+            }
+      }
+
+    // --- STATE: ABOUT CREATORS ---
+    else if (currentState == STATE_ABOUT_CREATORS) {
+        // 1. Background (Dimmed game background)
+        DrawTexturePro(background, (Rectangle){0,0,background.width,background.height}, (Rectangle){0,0,GetScreenWidth(),GetScreenHeight()}, (Vector2){0,0}, 0, DARKGRAY);
+        DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.7f)); 
+
+        int screenW = GetScreenWidth();
+        int centerX = screenW / 2;
+        
+        // Define a central panel area
+        int panelWidth = 700;
+        int panelHeight = 510;
+        int panelX = centerX - panelWidth / 2;
+        int panelY = GetScreenHeight() / 2 - panelHeight / 2 - 30;
+
+        // Draw the "Glass" Panel
+        DrawRectangleRounded((Rectangle){panelX, panelY, panelWidth, panelHeight}, 0.1f, 10, Fade(SKYBLUE, 0.4f));
+        DrawRectangleRoundedLines((Rectangle){panelX, panelY, panelWidth, panelHeight}, 0.1f, 10, LIGHTGRAY);
+
+        // --- TEXT LAYOUT ---
+        int y = panelY + 40; 
+        int gapSmall = 30;
+        int gapLarge = 50;
+
+        // A. HEADER
+        const char* header = "CREDITS & INFO";
+        DrawText(header, centerX - MeasureText(header, FONT_SIZE)/2, y, FONT_SIZE, GOLD);
+        y += gapLarge;
+
+        // B. ACADEMIC INFO
+        const char* uni = "Aristotle University of Thessaloniki";
+        DrawText(uni, centerX - MeasureText(uni, FONT_SIZE)/2, y, FONT_SIZE, RAYWHITE);
+        y += gapSmall;
+
+        const char* dept = "Dept. of Electrical & Computer Engineering";
+        DrawText(dept, centerX - MeasureText(dept, FONT_SIZE)/2, y, FONT_SIZE, LIGHTGRAY);
+        y += gapSmall;
+
+        const char* course = "Course: Structured Programming (004)";
+        DrawText(course, centerX - MeasureText(course, FONT_SIZE)/2, y, FONT_SIZE, LIGHTGRAY);
+        y += gapSmall;
+
+        // Separator Line
+        y += 10;
+        DrawLine(centerX - 150, y, centerX + 150, y, GRAY);
+        y += 20;
+
+        // C. PROJECT TITLE
+        const char* title = "Delivery Rush";
+        DrawText(title, centerX - MeasureText(title, FONT_SIZE)/2, y, FONT_SIZE, SKYBLUE);
+        y += gapLarge;
+
+        // D. AUTHORS 
+        const char* authorsLabel = "AUTHORS:";
+        DrawText(authorsLabel, centerX - MeasureText(authorsLabel, FONT_SIZE)/2, y, FONT_SIZE, ORANGE);
+        y += 35;
+
+        // Author 1
+        const char* auth1 = "Antonios Karafotis (AEM: 11891)";
+        DrawText(auth1, centerX - MeasureText(auth1, FONT_SIZE)/2, y, FONT_SIZE, WHITE);
+        y += 35; 
+
+        // Author 2
+        const char* auth2 = "Nikolaos Amoiridis (AEM: 11836)";
+        DrawText(auth2, centerX - MeasureText(auth2, FONT_SIZE)/2, y, FONT_SIZE, WHITE);
+        y += gapLarge;
+
+        // E. LICENSE
+        const char* licenceLabel = "LICENCE:";
+        DrawText(licenceLabel, centerX - MeasureText(licenceLabel, FONT_SIZE)/2, y, FONT_SIZE, ORANGE);
+        y += 35;
+        const char* license = "MIT License";
+        DrawText(license, centerX - MeasureText(license, FONT_SIZE)/2, y, FONT_SIZE, WHITE);
+        y += 25;
+        
+        const char* note = "(See LICENSE.txt for full text)";
+        DrawText(note, centerX - MeasureText(note, FONT_SIZE)/2, y, FONT_SIZE, WHITE);
+
+        // 5. Back Button 
+        if (DrawButton("BACK", (Rectangle){centerX - BUTTON_WIDTH/2, panelY + panelHeight + 20, BUTTON_WIDTH, BUTTON_HEIGHT}, FONT_SIZE, ORANGE, WHITE, BLACK)) {
+            currentState = STATE_MENU;
+        }
+    }
+
       if (exitRequest) {
         // A. Heavy Black Fade Background
         DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.8f));
