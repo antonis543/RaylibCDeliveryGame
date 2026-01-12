@@ -1,3 +1,15 @@
+/*
+ * Πανεπιστήμιο: Αριστοτέλειο Πανεπιστήμιο Θεσσαλονίκης
+ * Τμήμα: Τμήμα Ηλεκτρολόγων Μηχανικών και Μηχανικών Υπολογιστών
+ * Μάθημα: Δομημένος Προγραμματισμός (004)
+ * Τίτλος Εργασίας: Raylib Food Delivery Game
+ * Συγγραφείς: 
+ * - Αντώνιος Καραφώτης (ΑΕΜ: 11891)
+ * - Νικόλαος Αμοιρίδης (ΑΕΜ: 11836)
+ * Άδεια Χρήσης: MIT License
+ * (Δείτε το αρχείο LICENSE.txt για το πλήρες κείμενο)
+ */
+
 #include "raylib.h"
 #include "drawTextures.h"
 
@@ -99,9 +111,3 @@ void PreparePoliceTexture(RenderTexture2D target) {
         DrawRectangle(10, 0, 20, 4, BLACK);
     EndTextureMode();
 }
-
-// void DrawTrafficLight(int posx, int posy) {
-//     DrawRectangle(posx, posy, 20 * scale, 20 * scale, LIGHTGRAY); // Pole
-//     // Radius must also be scaled
-//     DrawCircleSector((Vector2){posx + (10 * scale), posy + (20 * scale)}, 10 * scale, 0, 180, 0, YELLOW); 
-// }

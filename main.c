@@ -1,5 +1,18 @@
+/*
+ * Πανεπιστήμιο: Αριστοτέλειο Πανεπιστήμιο Θεσσαλονίκης
+ * Τμήμα: Τμήμα Ηλεκτρολόγων Μηχανικών και Μηχανικών Υπολογιστών
+ * Μάθημα: Δομημένος Προγραμματισμός (004)
+ * Τίτλος Εργασίας: Raylib Food Delivery Game
+ * Συγγραφείς: 
+ * - Αντώνιος Καραφώτης (ΑΕΜ: 11891)
+ * - Νικόλαος Αμοιρίδης (ΑΕΜ: 11836)
+ * Άδεια Χρήσης: MIT License
+ * (Δείτε το αρχείο LICENSE.txt για το πλήρες κείμενο)
+ */
+
 #include <time.h>
 #include"raylib.h"
+#include "raymath.h"
 #include"helpers.h"
 #include"drawTextures.h"
 
@@ -16,7 +29,9 @@ const float MINIMAP_ZOOM = 0.3f;
 const int MINIMAP_BORDER = 2;
 
 bool showOrders = false;
-int count = 0; //Number of order
+int count = 0; // Number of order
+float totalMoney = 0.0f;
+float difficultyFactor = 0.8f; // Smaller equals less time
 
 int main(void) {
   
@@ -24,7 +39,13 @@ int main(void) {
   
   InitWindow(INITIAL_WINDOW_WIDTH, INITIAL_WINDOW_HEIGHT, "RaylibProjectAuth");
   Texture2D background = LoadTexture("assets/map.jpg"); 
-  Image backgroundWithBorders = LoadImage("assets/mapWithBorders.jpg");
+  
+  Image backgroundWithBorders = LoadImage("assets/mapWithBorders.png");
+  
+  InitMapLocations(backgroundWithBorders);
+  Order currentOrder = CreateNewOrder();
+  
+  SetTextureFilter(background, TEXTURE_FILTER_POINT);
   
   InitAudioDevice();
   Music backgroundMusic = LoadMusicStream("assets/background_music.mp3");
@@ -32,7 +53,6 @@ int main(void) {
 
   SetMusicVolume(backgroundMusic, 0.5f);
   SetSoundVolume(horn, 0.3f);
-  
   
   int mapHeight = background.height;
   int mapWidth = background.width;
@@ -61,12 +81,9 @@ int main(void) {
   
   // generate random vehicles inside the borders
   Vehicle vehicles[MAX_VEHICLES];
-  vehicleGenerator(MAX_VEHICLES, vehicles, background.height, background.width, backgroundWithBorders); // posx , posy != 0 else bug. Needs to be offsected
+  vehicleGenerator(MAX_VEHICLES, vehicles, background.height, background.width, backgroundWithBorders); 
   
-
   int rotation = 180;
-
-  KeyboardKey activeKey = KEY_NULL;
 
   RenderTexture2D carTex = LoadRenderTexture(40, 65);
   RenderTexture2D truckTex = LoadRenderTexture(65, 110);
@@ -79,6 +96,26 @@ int main(void) {
   while (!WindowShouldClose()) {
     UpdateMusicStream(backgroundMusic);
     updateTraffic(vehicles, MAX_VEHICLES, backgroundWithBorders, (Vector2){deliveryBike.x, deliveryBike.y});
+    
+    Vector2 bikePos = { deliveryBike.x, deliveryBike.y };
+    updateOrder(&currentOrder, bikePos, &count, &totalMoney, houses, houseCount);
+    
+    Vector2 currentTargetPos;
+    
+    if (!currentOrder.foodPickedUp) {
+        currentTargetPos = currentOrder.pickupLocation; // Target is restaurant
+    }
+    else currentTargetPos = currentOrder.dropoffLocation; // Target is house
+    
+    // Initiate arrow to target
+    float angleToTarget = atan2f(currentTargetPos.y - bikePos.y, currentTargetPos.x - bikePos.x);
+    
+    float arrowRadius = 45.0f;
+    Vector2 arrowPos = {
+        bikePos.x + cosf(angleToTarget) * arrowRadius,
+        bikePos.y + sinf(angleToTarget) * arrowRadius
+    };
+    
     BeginDrawing();
 
       ClearBackground(DARKGRAY);
@@ -96,7 +133,6 @@ int main(void) {
       }
 
       // points of bike we need to track for collisions
-      // goes clockwise: top, right, bottom, left
       const Vector2 collisionPoints[4] = {
           {deliveryBike.x, deliveryBike.y - verticalOffset - 1},
           {deliveryBike.x + horizontalOffset + 1, deliveryBike.y},
@@ -106,14 +142,12 @@ int main(void) {
       
       
       /*** MOVEMENT ***/ 
-      // Create a "future" rectangle to test if the move is valid before moving
       Rectangle futurePos = deliveryBike;
-
+      
       // MOVE FORWARD (W)
       if (IsKeyDown(KEY_W)) {
-        futurePos.y -= SPEED_CONSTANT; // Calculate target position
+        futurePos.y -= SPEED_CONSTANT; 
         
-        // Check specifically if we hit a CAR
         bool hitCar = checkCollisionWithVehicles(futurePos, vehicles, MAX_VEHICLES, true);
 
         if (!willTouchBorder(backgroundWithBorders, collisionPoints[0]) && !hitCar) {
@@ -171,12 +205,9 @@ int main(void) {
       }
 
       /*** CAMERA ***/
-      // Set camera to follow the bike
       cam.target.x = deliveryBike.x;
       cam.target.y = deliveryBike.y;
       
-      // Create bounds for cam.zoom, so that the
-      // bike won't become very small/big.
       if (cam.zoom >= 2 && GetMouseWheelMove() < 0) {
         cam.zoom -= 0.2;
       } else if (cam.zoom <= 3.6 && GetMouseWheelMove() > 0) {
@@ -189,6 +220,39 @@ int main(void) {
       BeginMode2D(cam);
         
         DrawTexture(background, 0, 0, WHITE);
+        
+        if (currentOrder.isActive && !currentOrder.foodPickedUp) {
+                DrawCircleV(currentOrder.pickupLocation, 7.5f, Fade(YELLOW, 0.6f)); // Semi transparent circle at restaurant
+            }
+            
+        if (currentOrder.isActive && currentOrder.foodPickedUp) {
+            DrawCircleV(currentOrder.dropoffLocation, 7.5f, Fade(YELLOW, 0.6f)); // Semi transparent circle at house
+        }
+        
+        // Draw arrow pointing to target
+        if (currentOrder.isActive)  {
+            float tipLength = 20.0f;
+            float wingLength = 15.0f;
+            float wingAngle = 5.0f; 
+
+            Vector2 tip = {
+                arrowPos.x + cosf(angleToTarget) * tipLength,
+                arrowPos.y + sinf(angleToTarget) * tipLength
+            };
+
+            Vector2 leftWing = {
+                arrowPos.x + cosf(angleToTarget + wingAngle) * wingLength,
+                arrowPos.y + sinf(angleToTarget + wingAngle) * wingLength
+            };
+
+            Vector2 rightWing = {
+                arrowPos.x + cosf(angleToTarget - wingAngle) * wingLength,
+                arrowPos.y + sinf(angleToTarget - wingAngle) * wingLength
+            };
+
+            DrawTriangle(tip, leftWing, rightWing, WHITE);
+            DrawTriangleLines(tip, leftWing, rightWing, BLACK); 
+        }
         
         for (int i = 0; i < MAX_VEHICLES; i++) {
           RenderVehicle(vehicles[i], carTex, truckTex, policeTex);
@@ -206,7 +270,7 @@ int main(void) {
       minimapCam.offset = (Vector2){ mmX + MINIMAP_WIDTH/2, mmY + MINIMAP_HEIGHT/2 };
       
       DrawRectangle(mmX - MINIMAP_BORDER, mmY - MINIMAP_BORDER, MINIMAP_WIDTH + MINIMAP_BORDER*2, MINIMAP_HEIGHT + MINIMAP_BORDER*2, WHITE);
-      DrawRectangle(mmX, mmY, MINIMAP_WIDTH, MINIMAP_HEIGHT, BLACK); // Black if out of bounds
+      DrawRectangle(mmX, mmY, MINIMAP_WIDTH, MINIMAP_HEIGHT, BLACK); 
       
       // Minimap initilization
       BeginScissorMode(mmX, mmY, MINIMAP_WIDTH, MINIMAP_HEIGHT);
@@ -219,6 +283,16 @@ int main(void) {
               RenderVehicle(vehicles[i], carTex, truckTex, policeTex);
             }
 
+            if (currentOrder.isActive && !currentOrder.foodPickedUp)  {
+                DrawRectangle(
+                    (int)currentOrder.pickupLocation.x - 10,
+                    (int)currentOrder.pickupLocation.y - 10,
+                    20,
+                    20,
+                    YELLOW
+                );
+            }
+            
             DrawTexturePro(deliveryBikeRender.texture, bikeSource, destRect, origin, rotation, WHITE);
             
 
@@ -236,11 +310,55 @@ int main(void) {
         showOrders = !showOrders;
       }
       
-      if (showOrders) {
-        DrawRectangle (10, 10, 140, 170, WHITE);
-        DrawText("Orders", 15, 15 + count*25, 20, BLACK);
+      if (showOrders && currentOrder.foodPickedUp) {
+        DrawRectangle (10, 10, 260, 125, Fade(WHITE, 0.9f));
+        DrawRectangleLines (10, 10, 260, 125, BLACK);
+        
+        DrawText(TextFormat("Order %d:", count+1), 20, 20, 20, BLACK);
+        
+        DrawText(currentOrder.restaurantName, 20, 45, 15, BLACK);
+        
+        float distRestToHouse = Vector2Distance(currentOrder.pickupLocation, currentOrder.dropoffLocation);
+        float distToHouse = Vector2Distance(bikePos, currentOrder.dropoffLocation);
+        float reward = 5.0f + (distRestToHouse * 0.015f);
+        
+        DrawText(TextFormat("Distance: %.1f m", distToHouse), 20, 70, 20, BLACK);
+        DrawText(TextFormat("Reward: $%.2f", reward), 20, 90, 20, DARKGREEN);
       }
-
+      
+      else if (showOrders)  {
+        DrawRectangle (10, 10, 220, 100, WHITE);
+        DrawText(TextFormat("%d orders completed", count), 20, 20, 20, BLACK);
+        DrawText(TextFormat("Total Cash: $%.2f", totalMoney), 20, 50, 20, DARKGREEN);
+      }
+      
+      // Initialize timer
+      if (currentOrder.isActive && currentOrder.foodPickedUp) {
+            int minutes = (int)currentOrder.timeRemaining / 60;
+            int seconds = (int)currentOrder.timeRemaining % 60;
+            const char* timerText = TextFormat("%02d:%02d", minutes, seconds);
+            const char* labelText = "Time:";
+                
+            int fontSize = 40;
+            int boxWidth = 160;
+            int boxHeight = 80;            
+                
+            // Timer coordinates
+            int boxX = mmX - boxWidth - 20; 
+            int boxY = mmY + (MINIMAP_HEIGHT / 2) - (boxHeight / 2);
+              
+            DrawRectangle(boxX, boxY, boxWidth, boxHeight, Fade(WHITE, 0.9f));
+            DrawRectangleLines(boxX, boxY, boxWidth, boxHeight, BLACK); 
+                
+            Color timerColor;
+ 
+            // Red timer if time remaining is under 10 seconds
+            if (currentOrder.timeRemaining < 10.0f) timerColor = RED;
+            else timerColor = BLACK;
+                
+            DrawText(labelText, boxX + 15, boxY + 5, 10, DARKGRAY);
+            DrawText(timerText, boxX + 20, boxY + 25, fontSize, timerColor); 
+            }
 
     EndDrawing();
   }
